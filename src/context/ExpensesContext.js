@@ -1,7 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  collection,
+  onSnapshot,
+  addDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { db } from '../services/firebase';
 
-const EXPENSES_KEY = '@expensetracker/expenses';
 const SETTINGS_KEY = '@expensetracker/settings';
 
 const DEFAULT_SETTINGS = {
@@ -11,27 +19,24 @@ const DEFAULT_SETTINGS = {
 
 const ExpensesContext = createContext(null);
 
+function normalizeCreatedAt(rawCreatedAt) {
+  if (!rawCreatedAt) return new Date().toISOString();
+  if (typeof rawCreatedAt.toDate === 'function') {
+    return rawCreatedAt.toDate().toISOString();
+  }
+  return String(rawCreatedAt);
+}
+
 export function ExpensesProvider({ children }) {
   const [expenses, setExpenses] = useState([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // 1. Hidratación inicial desde AsyncStorage
+  // 1. Hidratar ajustes locales desde AsyncStorage
   useEffect(() => {
-    const hydrateStorage = async () => {
+    const loadSettings = async () => {
       try {
-        const [storedExpenses, storedSettings] = await Promise.all([
-          AsyncStorage.getItem(EXPENSES_KEY),
-          AsyncStorage.getItem(SETTINGS_KEY),
-        ]);
-
-        if (storedExpenses) {
-          const parsedExpenses = JSON.parse(storedExpenses);
-          if (Array.isArray(parsedExpenses)) {
-            setExpenses(parsedExpenses);
-          }
-        }
-
+        const storedSettings = await AsyncStorage.getItem(SETTINGS_KEY);
         if (storedSettings) {
           const parsedSettings = JSON.parse(storedSettings);
           setSettings({
@@ -40,44 +45,52 @@ export function ExpensesProvider({ children }) {
           });
         }
       } catch (error) {
-        console.error('Error al hidratar AsyncStorage:', error);
+        console.error('Error al cargar ajustes de AsyncStorage:', error);
       } finally {
         setIsLoaded(true);
       }
     };
 
-    hydrateStorage();
+    loadSettings();
   }, []);
 
-  // 2. Persistir gastos solo cuando isLoaded es true
+  // 2. Persistir cambios de ajustes en AsyncStorage
   useEffect(() => {
     if (!isLoaded) return;
-
-    const saveExpenses = async () => {
-      try {
-        await AsyncStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
-      } catch (error) {
-        console.error('Error al guardar gastos:', error);
-      }
-    };
-
-    saveExpenses();
-  }, [expenses, isLoaded]);
-
-  // 3. Persistir ajustes solo cuando isLoaded es true
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    const saveSettings = async () => {
-      try {
-        await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-      } catch (error) {
-        console.error('Error al guardar ajustes:', error);
-      }
-    };
-
-    saveSettings();
+    AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)).catch((error) =>
+      console.error('Error al guardar ajustes:', error)
+    );
   }, [settings, isLoaded]);
+
+  // 3. Suscripción en tiempo real a la colección "expenses" en Cloud Firestore
+  useEffect(() => {
+    const expensesRef = collection(db, 'expenses');
+
+    const unsubscribe = onSnapshot(
+      expensesRef,
+      (snapshot) => {
+        const items = snapshot.docs.map((document) => {
+          const data = document.data({ serverTimestamps: 'estimate' });
+          return {
+            id: document.id,
+            title: data.title ?? '',
+            amount: Number(data.amount ?? 0),
+            category: data.category ?? 'Otros',
+            notes: data.notes ?? '',
+            createdAt: normalizeCreatedAt(data.createdAt),
+          };
+        });
+
+        items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setExpenses(items);
+      },
+      (error) => {
+        console.error('Error en suscripción de Firestore:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const addExpense = ({ title, amount, category, notes = '' }) => {
     const cleanTitle = String(title ?? '').trim();
@@ -90,21 +103,23 @@ export function ExpensesProvider({ children }) {
       return { ok: false, error: 'El monto debe ser un número mayor a 0.' };
     }
 
-    const newExpense = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    addDoc(collection(db, 'expenses'), {
       title: cleanTitle,
       amount: numericAmount,
       category: category || 'Otros',
       notes: String(notes ?? '').trim(),
-      createdAt: new Date().toISOString(),
-    };
+      createdAt: serverTimestamp(),
+    }).catch((error) => {
+      console.error('Error al guardar gasto en Firestore:', error);
+    });
 
-    setExpenses((prev) => [newExpense, ...prev]);
-    return { ok: true, expense: newExpense };
+    return { ok: true };
   };
 
   const removeExpense = (id) => {
-    setExpenses((prev) => prev.filter((item) => item.id !== id));
+    deleteDoc(doc(db, 'expenses', id)).catch((error) => {
+      console.error('Error al eliminar gasto en Firestore:', error);
+    });
   };
 
   const updateSetting = (key, value) => {
