@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,15 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
+import { CameraView } from 'expo-camera';
 import PrimaryButton from '../components/PrimaryButton';
 import { useExpenses } from '../context/ExpensesContext';
 import { CATEGORIES } from '../data/categories';
 import { useReceiptPicker } from '../hooks/useReceiptPicker';
 import { uploadReceipt } from '../services/cloudinary';
+import { useQrScanner } from '../hooks/useQrScanner';
 
 const NewExpenseModal = ({ navigation }) => {
   const { addExpense } = useExpenses();
@@ -26,6 +29,31 @@ const NewExpenseModal = ({ navigation }) => {
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');
   const [uploading, setUploading] = useState(false);
+
+  const handleQrData = useCallback((parsed) => {
+    if (parsed.title) setTitle(parsed.title);
+    if (parsed.amount) setAmount(String(parsed.amount));
+    if (parsed.notes) setNotes(parsed.notes);
+
+    if (parsed.category) {
+      const matched = CATEGORIES.find(
+        (c) => c.label.toLowerCase() === parsed.category.toLowerCase()
+      );
+      if (matched) setCategory(matched.label);
+    }
+
+    Alert.alert(
+      'QR leído',
+      'Se completaron los datos disponibles en el formulario. Revisalos antes de guardar.'
+    );
+  }, []);
+
+  const {
+    isScannerOpen,
+    openScannerWithPrePermission,
+    closeScanner,
+    handleBarcodeScanned,
+  } = useQrScanner(handleQrData);
 
   const handleSave = async () => {
     if (uploading || processing) return;
@@ -80,6 +108,15 @@ const NewExpenseModal = ({ navigation }) => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Cargar Nuevo Gasto</Text>
+
+      <TouchableOpacity
+        style={styles.qrButton}
+        onPress={openScannerWithPrePermission}
+        activeOpacity={0.8}
+        disabled={uploading || processing}
+      >
+        <Text style={styles.qrButtonText}>📷 Escanear QR de factura / pago</Text>
+      </TouchableOpacity>
 
       <Text style={styles.label}>Nombre del Gasto:</Text>
       <TextInput
@@ -177,6 +214,29 @@ const NewExpenseModal = ({ navigation }) => {
         title={uploading ? 'Guardando...' : 'Guardar Gasto'}
         onPress={handleSave}
       />
+
+      <Modal
+        visible={isScannerOpen}
+        animationType="slide"
+        onRequestClose={closeScanner}
+      >
+        <View style={styles.scannerContainer}>
+          <CameraView
+            style={styles.camera}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+            onBarcodeScanned={handleBarcodeScanned}
+          />
+          <View style={styles.scannerOverlay}>
+            <Text style={styles.scannerHint}>
+              Apuntá la cámara al código QR para autocompletar el gasto
+            </Text>
+            <TouchableOpacity style={styles.closeButton} onPress={closeScanner}>
+              <Text style={styles.closeButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -191,9 +251,24 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: 'center',
     color: '#333333',
+  },
+  qrButton: {
+    borderWidth: 1,
+    borderColor: '#2563EB',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  qrButtonText: {
+    color: '#1D4ED8',
+    fontWeight: '600',
+    fontSize: 15,
   },
   label: {
     fontSize: 14,
@@ -276,6 +351,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#DC2626',
+  },
+  scannerContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  camera: {
+    flex: 1,
+  },
+  scannerOverlay: {
+    position: 'absolute',
+    bottom: 32,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+    gap: 14,
+  },
+  scannerHint: {
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    textAlign: 'center',
+    fontSize: 14,
+  },
+  closeButton: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  closeButtonText: {
+    color: '#111827',
+    fontWeight: '700',
+    fontSize: 15,
   },
 });
 
