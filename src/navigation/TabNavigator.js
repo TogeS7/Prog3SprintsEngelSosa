@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import StackNavigator from './StackNavigator';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -10,6 +11,7 @@ export default function TabNavigator() {
     <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Inicio" component={HomeScreen} />
       <Tab.Screen name="Gastos" component={StackNavigator} />
+      <Tab.Screen name="Ajustes" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }

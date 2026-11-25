@@ -1,27 +1,36 @@
 import React from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { useExpenses } from '../context/ExpensesContext';
 import ExpenseCard from '../components/ExpenseCard';
+import PrimaryButton from '../components/PrimaryButton';
 
-const mockExpenses = [
-  { id: '1', name: 'Supermercado', category: 'Alimentos', amount: '25000' },
-  { id: '2', name: 'Combustible', category: 'Transporte', amount: '12000' },
-  { id: '3', name: 'Internet', category: 'Servicios', amount: '8500' },
-];
+const ExpensesScreen = ({ navigation }) => {
+  const { expenses } = useExpenses();
 
-const ExpensesScreen = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Listado de Gastos</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Listado de Gastos</Text>
+        <PrimaryButton
+          title="+ Nuevo Gasto"
+          onPress={() => navigation.navigate('NewExpense')}
+        />
+      </View>
+
       <FlatList
-        data={mockExpenses}
+        data={expenses}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <ExpenseCard
-            name={item.name}
+            title={item.title}
             category={item.category}
             amount={item.amount}
+            onPress={() => navigation.navigate('ExpenseDetail', { id: item.id })}
           />
         )}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>Todavía no registraste gastos.</Text>
+        }
         contentContainerStyle={styles.listContainer}
       />
     </View>
@@ -34,14 +43,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     padding: 16,
   },
+  header: {
+    marginBottom: 16,
+    gap: 10,
+  },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 16,
     color: '#333333',
   },
   listContainer: {
     paddingBottom: 20,
+    flexGrow: 1,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 40,
+    fontSize: 16,
+    color: '#64748B',
   },
 });
 

@@ -1,51 +1,55 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { getCategoryMeta } from '../data/categories';
 
-const ExpenseCard = ({ name, category, amount }) => {
+export default function ExpenseCard({ title, category, amount, onPress }) {
+  const meta = getCategoryMeta(category);
+
   return (
-    <View style={styles.card}>
-      <View style={styles.infoContainer}>
-        <Text style={styles.name}>{name}</Text>
-        <Text style={styles.category}>{category}</Text>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
+      <View style={styles.info}>
+        <Text style={styles.title}>
+          {meta.icon} {title}
+        </Text>
+        <Text style={[styles.category, { color: meta.color }]}>{category}</Text>
       </View>
-      <Text style={styles.amount}>${amount}</Text>
-    </View>
+      <Text style={styles.amount}>${Number(amount).toLocaleString('es-AR')}</Text>
+    </TouchableOpacity>
   );
-};
+}
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 10,
     marginBottom: 12,
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
-  infoContainer: {
+  info: {
     flex: 1,
+    paddingRight: 12,
   },
-  name: {
+  title: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333333',
+    fontWeight: '700',
+    color: '#1E293B',
   },
   category: {
-    fontSize: 14,
-    color: '#666666',
+    fontSize: 13,
+    fontWeight: '600',
     marginTop: 4,
   },
   amount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2E7D32',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
   },
 });
-
-export default ExpenseCard;

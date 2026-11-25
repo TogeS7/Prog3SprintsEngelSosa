@@ -1,67 +1,89 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity, ScrollView } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
+import { useExpenses } from '../context/ExpensesContext';
+import { CATEGORIES } from '../data/categories';
 
-const NewExpenseModal = () => {
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
+const NewExpenseModal = ({ navigation }) => {
+  const { addExpense } = useExpenses();
+
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState(CATEGORIES[0].label);
   const [amount, setAmount] = useState('');
+  const [notes, setNotes] = useState('');
 
   const handleSave = () => {
-    if (!name || !category || !amount) {
-      Alert.alert('Error', 'Por favor completá todos los campos');
+    const result = addExpense({ title, amount, category, notes });
+
+    if (!result.ok) {
+      Alert.alert('Datos inválidos', result.error);
       return;
     }
 
-    console.log('Nuevo Gasto Registrado:', { name, category, amount });
-    Alert.alert(
-      'Gasto Registrado',
-      `Nombre: ${name}\nCategoría: ${category}\nMonto: $${amount}`
-    );
-
-    // Limpiar formulario
-    setName('');
-    setCategory('');
+    setTitle('');
     setAmount('');
+    setNotes('');
+    navigation.goBack();
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Cargar Nuevo Gasto</Text>
 
       <Text style={styles.label}>Nombre del Gasto:</Text>
       <TextInput
         style={styles.input}
         placeholder="Ej: Supermercado"
-        value={name}
-        onChangeText={setName}
-      />
-
-      <Text style={styles.label}>Categoría:</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ej: Alimentos"
-        value={category}
-        onChangeText={setCategory}
+        value={title}
+        onChangeText={setTitle}
       />
 
       <Text style={styles.label}>Monto ($):</Text>
       <TextInput
         style={styles.input}
-        placeholder="Ej: 5000"
+        placeholder="Ej: 25000"
         value={amount}
         onChangeText={setAmount}
         keyboardType="numeric"
       />
 
+      <Text style={styles.label}>Categoría:</Text>
+      <View style={styles.categoriesGrid}>
+        {CATEGORIES.map((cat) => {
+          const isSelected = category === cat.label;
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              style={[
+                styles.categoryChip,
+                isSelected && { backgroundColor: cat.color, borderColor: cat.color },
+              ]}
+              onPress={() => setCategory(cat.label)}
+            >
+              <Text style={[styles.categoryChipText, isSelected && { color: '#FFFFFF' }]}>
+                {cat.icon} {cat.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <Text style={styles.label}>Notas (opcional):</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Ej: Compra semanal"
+        value={notes}
+        onChangeText={setNotes}
+      />
+
       <PrimaryButton title="Guardar Gasto" onPress={handleSave} />
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     padding: 20,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
@@ -86,6 +108,25 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 16,
     fontSize: 16,
+  },
+  categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  categoryChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+  },
+  categoryChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
   },
 });
 
