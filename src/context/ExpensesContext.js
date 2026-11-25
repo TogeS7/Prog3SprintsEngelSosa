@@ -77,6 +77,7 @@ export function ExpensesProvider({ children }) {
             amount: Number(data.amount ?? 0),
             category: data.category ?? 'Otros',
             notes: data.notes ?? '',
+            receiptUrl: data.receiptUrl ?? null,
             createdAt: normalizeCreatedAt(data.createdAt),
           };
         });
@@ -92,7 +93,7 @@ export function ExpensesProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  const addExpense = ({ title, amount, category, notes = '' }) => {
+  const addExpense = async ({ title, amount, category, notes = '', receiptUrl = null }) => {
     const cleanTitle = String(title ?? '').trim();
     const numericAmount = Number(amount);
 
@@ -103,17 +104,20 @@ export function ExpensesProvider({ children }) {
       return { ok: false, error: 'El monto debe ser un número mayor a 0.' };
     }
 
-    addDoc(collection(db, 'expenses'), {
-      title: cleanTitle,
-      amount: numericAmount,
-      category: category || 'Otros',
-      notes: String(notes ?? '').trim(),
-      createdAt: serverTimestamp(),
-    }).catch((error) => {
+    try {
+      await addDoc(collection(db, 'expenses'), {
+        title: cleanTitle,
+        amount: numericAmount,
+        category: category || 'Otros',
+        notes: String(notes ?? '').trim(),
+        receiptUrl: receiptUrl || null,
+        createdAt: serverTimestamp(),
+      });
+      return { ok: true };
+    } catch (error) {
       console.error('Error al guardar gasto en Firestore:', error);
-    });
-
-    return { ok: true };
+      return { ok: false, error: 'No se pudo guardar el gasto en Firestore.' };
+    }
   };
 
   const removeExpense = (id) => {

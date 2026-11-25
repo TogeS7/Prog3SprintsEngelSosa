@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { useExpenses } from '../context/ExpensesContext';
 import { getCategoryMeta } from '../data/categories';
+import { getReceiptThumbnail } from '../services/cloudinary';
 
 export default function ExpenseDetailScreen({ route, navigation }) {
   const { id } = route.params;
@@ -38,7 +39,7 @@ export default function ExpenseDetailScreen({ route, navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.card}>
         <Text style={styles.title}>{expense.title}</Text>
         <Text style={styles.amount}>${Number(expense.amount).toLocaleString('es-AR')}</Text>
@@ -62,16 +63,28 @@ export default function ExpenseDetailScreen({ route, navigation }) {
           </Text>
         </View>
 
+        {expense.receiptUrl ? (
+          <View style={styles.row}>
+            <Text style={styles.label}>Comprobante:</Text>
+            <Image
+              source={{ uri: getReceiptThumbnail(expense.receiptUrl, 800) }}
+              style={styles.receiptImage}
+              resizeMode="contain"
+            />
+          </View>
+        ) : null}
+
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
           <Text style={styles.deleteButtonText}>Eliminar gasto</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#F5F5F5' },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  content: { padding: 16, paddingBottom: 32 },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -87,6 +100,13 @@ const styles = StyleSheet.create({
   row: { marginBottom: 12 },
   label: { fontSize: 13, color: '#64748B', fontWeight: '600' },
   value: { fontSize: 16, color: '#1E293B', marginTop: 2 },
+  receiptImage: {
+    width: '100%',
+    height: 280,
+    borderRadius: 8,
+    marginTop: 8,
+    backgroundColor: '#F1F5F9',
+  },
   deleteButton: {
     marginTop: 24,
     backgroundColor: '#DC2626',

@@ -25,6 +25,7 @@ const ExpensesScreen = ({ navigation }) => {
             title={item.title}
             category={item.category}
             amount={item.amount}
+            receiptUrl={item.receiptUrl}
             onPress={() => navigation.navigate('ExpenseDetail', { id: item.id })}
           />
         )}

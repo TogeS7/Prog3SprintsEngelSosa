@@ -1,12 +1,19 @@
 import React from 'react';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, View, Text, StyleSheet, Image } from 'react-native';
 import { getCategoryMeta } from '../data/categories';
+import { getReceiptThumbnail } from '../services/cloudinary';
 
-export default function ExpenseCard({ title, category, amount, onPress }) {
+export default function ExpenseCard({ title, category, amount, receiptUrl, onPress }) {
   const meta = getCategoryMeta(category);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
+      {receiptUrl ? (
+        <Image
+          source={{ uri: getReceiptThumbnail(receiptUrl, 200) }}
+          style={styles.thumbnail}
+        />
+      ) : null}
       <View style={styles.info}>
         <Text style={styles.title}>
           {meta.icon} {title}
@@ -32,6 +39,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
+  },
+  thumbnail: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#F1F5F9',
   },
   info: {
     flex: 1,
